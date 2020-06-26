@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "graphic_ext"
+version = "0.1.0"
+description = ""
+authors = ["Vladimir Usatikov <vladimir@usatikov.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+PyQt5 = "^5.15.0"
+typing = "^3.7.4"
+
+[tool.poetry.dev-dependencies]
+pytest = "^4.6"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
