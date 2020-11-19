@@ -7,7 +7,7 @@ authors = ["Vladimir Usatikov <vladimir@usatikov.com>"]
 [tool.poetry.dependencies]
 python = "^3.6"
 PyQt5 = "^5.15.0"
-typing = "^3.7.4"
+#typing = "^3.7.4"
 
 [tool.poetry.dev-dependencies]
 pytest = "^4.6"
