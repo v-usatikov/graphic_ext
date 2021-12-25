@@ -227,7 +227,7 @@ class GraphicField(QFrame):
             if zone.coordinates_are_in_zone(x, y):
                 zone.double_clicked.emit()
 
-def zoom_in(self, zoom_k: float = 0.2):
+    def zoom_in(self, zoom_k: float = 0.2):
         print(self.zoom_w)
         zoom_w0 = self.zoom_w
         zoom_k = 1 - zoom_k
