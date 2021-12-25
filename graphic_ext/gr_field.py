@@ -1,10 +1,15 @@
-from typing import List
+from typing import List, Any, Callable, Optional
 
+import PIL
+import numpy as np
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from PyQt5.QtGui import QPainter, QPen
 from PyQt5.QtWidgets import QFrame, QLabel
 from PyQt5.QtWidgets import QSizePolicy
+from PIL import Image
+from nptyping import NDArray, Bool
+
 
 
 class GraphicField(QFrame):
@@ -30,7 +35,8 @@ class GraphicField(QFrame):
         self.__modes = ['normal', 'grab', 'select']
         self.__mode = 'normal'
 
-        self.objekten: List[GraphicObjekt] = []
+        self.objects: List[GraphicObject] = []
+        self.zones: List[GraphicZone] = []
 
         self.__select = False
         self.__select_start = (0, 0)
@@ -140,28 +146,46 @@ class GraphicField(QFrame):
         qp.end()
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        x, y = event.pos().x(), event.pos().y()
         if self.__mode == 'select':
             self.__select = True
-            self.__select_start = (event.pos().x(), event.pos().y())
-            self.__select_end = (event.pos().x(), event.pos().y())
+            self.__select_start = (x, y)
+            self.__select_end = (x, y)
         elif self.__mode == 'grab':
             self.setCursor(Qt.ClosedHandCursor)
-            self.__move_start = (event.pos().x(), event.pos().y())
+            self.__move_start = (x, y)
 
             self.__zoom_x0 = self.zoom_x
             self.__zoom_y0 = self.zoom_y
+        else:
+            x, y = self.pixel_to_norm_coord(x, y)
+            for zone in self.zones:
+                if zone.coordinates_are_in_zone(x, y):
+                    zone.clicked.emit()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        x, y = event.pos().x(), event.pos().y()
         if self.__mode == 'select':
-            self.__select_end = (event.pos().x(), event.pos().y())
+            self.__select_end = (x, y)
             self.update()
         elif self.__mode == 'grab':
-            end = (event.pos().x(), event.pos().y())
+            end = (x, y)
             dx = end[0] - self.__move_start[0]
             dy = end[1] - self.__move_start[1]
             self.zoom_x = self.__zoom_x0 - self.pixel_to_norm_rel(dx)
             self.zoom_y = self.__zoom_y0 - self.pixel_to_norm_rel(dy)
             self.zoomed.emit()
+        else:
+            x, y = self.pixel_to_norm_coord(x, y)
+            for zone in self.zones:
+                if zone.coordinates_are_in_zone(x, y):
+                    if not zone.activated:
+                        zone.mouse_enter.emit()
+                        zone.activated = True
+                else:
+                    if zone.activated:
+                        zone.mouse_leave.emit()
+                        zone.activated = True
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         if self.__mode == 'select':
@@ -196,7 +220,14 @@ class GraphicField(QFrame):
         elif self.__mode == 'grab':
             self.setCursor(Qt.OpenHandCursor)
 
-    def zoom_in(self, zoom_k: float = 0.2):
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
+
+        x, y = self.pixel_to_norm_coord(event.pos().x(), event.pos().y())
+        for zone in self.zones:
+            if zone.coordinates_are_in_zone(x, y):
+                zone.double_clicked.emit()
+
+def zoom_in(self, zoom_k: float = 0.2):
         print(self.zoom_w)
         zoom_w0 = self.zoom_w
         zoom_k = 1 - zoom_k
@@ -222,14 +253,14 @@ class GraphicField(QFrame):
         self.zoomed.emit()
 
 
-class GraphicObjekt(QLabel):
+class GraphicObject(QLabel):
 
     def __init__(self, gr_field: GraphicField, x: float = 0, y: float = 0):
         super().__init__(gr_field)
         self.setText('')
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.gr_field = gr_field
-        self.gr_field.objekten.append(self)
+        self.gr_field.objects.append(self)
 
         self.x = x
         self.y = y
@@ -257,3 +288,46 @@ class GraphicObjekt(QLabel):
     def refresh(self):
         self.rescale()
         self.reposition()
+
+
+class GraphicZone(QObject):
+
+    mask: NDArray[(Any, 2), Bool]
+    check_func: Optional[Callable[[float, float], bool]] = None
+
+    activated: bool = False
+    clicked = pyqtSignal()
+    double_clicked = pyqtSignal()
+    mouse_enter = pyqtSignal()
+    mouse_leave = pyqtSignal()
+
+    def __init__(self, check_func: Callable[[float, float], bool] = None,
+                 mask: NDArray[(Any, 2), Bool] = None,
+                 mask_file: str = None):
+
+        super().__init__()
+
+        if check_func is not None:
+            self.check_func = check_func
+        elif mask is not None:
+            self.mask = mask.copy()
+        elif mask_file is not None:
+            self.read_mask_from_file(mask_file)
+        else:
+            self.check_func = lambda x, y: False
+
+    def read_mask_from_file(self, mask_file: str):
+
+        image_pil = PIL.Image.open(mask_file).convert('L')
+        image = np.array(image_pil)
+        self.mask = image > 123
+        self.check_func = None
+
+    def coordinates_are_in_zone(self, x: float, y: float) -> bool:
+        if self.check_func is not None:
+            return self.check_func(x, y)
+        else:
+            n_y, n_x = self.mask.shape
+            x_index = round(x*n_x/100)
+            y_index = round(y*n_y/100)
+            return self.mask[y_index, x_index]
