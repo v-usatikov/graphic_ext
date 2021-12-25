@@ -301,11 +301,12 @@ class GraphicZone(QObject):
     mouse_enter = pyqtSignal()
     mouse_leave = pyqtSignal()
 
-    def __init__(self, check_func: Callable[[float, float], bool] = None,
+    def __init__(self, gr_field: GraphicField, check_func: Callable[[float, float], bool] = None,
                  mask: NDArray[(Any, 2), Bool] = None,
                  mask_file: str = None):
 
         super().__init__()
+        self.gr_field = gr_field
 
         if check_func is not None:
             self.check_func = check_func
@@ -328,6 +329,10 @@ class GraphicZone(QObject):
             return self.check_func(x, y)
         else:
             n_y, n_x = self.mask.shape
-            x_index = round(x*n_x/100)
-            y_index = round(y*n_y/100)
-            return self.mask[y_index, x_index]
+            k = n_x/self.gr_field.x_range
+            x_index = round(x*k)
+            y_index = round(y*k)
+            try:
+                return self.mask[y_index, x_index]
+            except IndexError:
+                return False
