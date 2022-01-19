@@ -185,7 +185,7 @@ class GraphicField(QFrame):
                 else:
                     if zone.activated:
                         zone.mouse_leave.emit()
-                        zone.activated = True
+                        zone.activated = False
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         if self.__mode == 'select':
@@ -228,7 +228,7 @@ class GraphicField(QFrame):
                 zone.double_clicked.emit()
 
     def zoom_in(self, zoom_k: float = 0.2):
-        print(self.zoom_w)
+        # print(self.zoom_w)
         zoom_w0 = self.zoom_w
         zoom_k = 1 - zoom_k
         self.zoom_w = (self.zoom_w + 2*self.margin)*zoom_k - 2*self.margin
@@ -240,7 +240,7 @@ class GraphicField(QFrame):
         self.zoom_y += d_z
         self.zoomed.emit()
 
-        print(self.zoom_w)
+        # print(self.zoom_w)
 
     def zoom_out(self, zoom_k: float = 0.2):
         zoom_w0 = self.zoom_w
@@ -265,7 +265,7 @@ class GraphicObject(QLabel):
         self.x = x
         self.y = y
         self.reposition()
-        print(self.pos())
+        # print(self.pos())
 
         self.gr_field.zoomed.connect(self.refresh)
 
@@ -273,12 +273,12 @@ class GraphicObject(QLabel):
         pass
 
     def reposition(self):
-        print('norm', self.x, self.y)
+        # print('norm', self.x, self.y)
         x, y = self.gr_field.norm_to_pixel_coord(self.x, self.y)
-        print('pixel', x, y)
+        # print('pixel', x, y)
         self.move(round(x - self.width() / 2), round(y - self.height() / 2))
-        print('угол', round(x - self.width() / 2), round(y - self.height() / 2))
-        print()
+        # print('угол', round(x - self.width() / 2), round(y - self.height() / 2))
+        # print()
 
     def move_to(self, x, y):
         self.x = x
