@@ -1,15 +1,18 @@
-from typing import List, Any, Callable, Optional
+from cmath import rect, pi
+from typing import List, Any, Callable, Optional, Dict, Tuple, Iterable
 
 import PIL
 import numpy as np
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QObject
-from PyQt5.QtGui import QPainter, QPen
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QRect
+from PyQt5.QtGui import QPainter, QPen, QPixmap, QColor, QFont
 from PyQt5.QtWidgets import QFrame, QLabel
 from PyQt5.QtWidgets import QSizePolicy
 from PIL import Image
 from nptyping import NDArray, Bool
 
+from .paint_ext import QPainter_ext
+from .helper_functions import set_attributes, complex_to_tuple_rounded
 
 
 class GraphicField(QFrame):
@@ -46,15 +49,36 @@ class GraphicField(QFrame):
         self.__zoom_x0 = 0
         self.__zoom_y0 = 0
 
+        self.__mouse_is_pressed = False
+        self.setMouseTracking(True)
+
         self.zoomed.connect(self.update)
 
+        self.background = BackgroundPicture(self)
+        self.front_layer = FrontLayer(self)
+
+    def set_background(self, pixmap: QPixmap, use_picture_coordinates: bool = True):
+
+        if use_picture_coordinates:
+            self.x_range = pixmap.width()
+            self.y_range = pixmap.height()
+            self.zoom_reset()
+        self.background.set_picture(pixmap)
+
+    def set_background_from_file(self, file_path: str, use_picture_coordinates: bool = True):
+
+        pixmap = QPixmap(file_path)
+        self.set_background(pixmap, use_picture_coordinates)
+
     def zoom_reset(self):
+
         self.zoom_x = 0
         self.zoom_y = 0
         self.zoom_w = self.x_range
         self.zoomed.emit()
 
     def set_mode(self, mode: str):
+
         if mode not in self.__modes:
             raise ValueError(f'Unbekannter Mode: "{mode}". Mögliche Variante: {self.__modes}')
         self.__mode = mode
@@ -107,6 +131,9 @@ class GraphicField(QFrame):
                 self.resize(round(height * self.x_range / self.y_range), height)
         if self.scale:
             self.zoomed.emit()
+
+        self.front_layer.setFixedWidth(self.width())
+        self.front_layer.setFixedHeight(self.height())
         # print(a0.size())
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
@@ -117,16 +144,12 @@ class GraphicField(QFrame):
         qp.setRenderHint(QPainter.Antialiasing)
 
         # Hintergrund malen
-        pen = QPen(Qt.gray, 2, Qt.SolidLine)
-        pen.setWidth(1)
-        pen.setColor(Qt.gray)
+        pen = QPen(Qt.gray, 1, Qt.SolidLine)
         qp.setPen(pen)
         qp.setBrush(Qt.gray)
         qp.drawRect(0, 0, self.width(), self.height())
 
         # Sample malen
-        pen = QPen(Qt.gray, 2, Qt.SolidLine)
-        pen.setWidth(1)
         pen.setColor(Qt.white)
         qp.setPen(pen)
         qp.setBrush(Qt.white)
@@ -134,18 +157,23 @@ class GraphicField(QFrame):
                     self.norm_to_pixel_rel(self.x_range + 2*self.margin),
                     self.norm_to_pixel_rel(self.x_range + 2*self.margin))
 
-        if self.__select:
-            pen = QPen(Qt.gray, 1, Qt.SolidLine)
-
-            pen.setWidth(1)
-            qp.setPen(pen)
-            qp.setBrush(Qt.NoBrush)
-            start = self.__select_start
-            end = self.__select_end
-            qp.drawRect(start[0], start[1], end[0] - start[0], end[1] - start[1])
         qp.end()
 
+    def paintFrontLayer(self, painter: QPainter):
+
+        if self.__select:
+            pen = QPen(Qt.gray, 1, Qt.SolidLine)
+            painter.setPen(pen)
+            painter.setBrush(Qt.NoBrush)
+            start = self.__select_start
+            end = self.__select_end
+            painter.drawRect(start[0], start[1], end[0] - start[0], end[1] - start[1])
+
+        for zone in self.zones:
+            zone.paint(painter)
+
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+
         x, y = event.pos().x(), event.pos().y()
         if self.__mode == 'select':
             self.__select = True
@@ -162,13 +190,15 @@ class GraphicField(QFrame):
             for zone in self.zones:
                 if zone.coordinates_are_in_zone(x, y):
                     zone.clicked.emit()
+        self.__mouse_is_pressed = True
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+
         x, y = event.pos().x(), event.pos().y()
-        if self.__mode == 'select':
+        if self.__mode == 'select' and self.__mouse_is_pressed:
             self.__select_end = (x, y)
             self.update()
-        elif self.__mode == 'grab':
+        elif self.__mode == 'grab' and self.__mouse_is_pressed:
             end = (x, y)
             dx = end[0] - self.__move_start[0]
             dy = end[1] - self.__move_start[1]
@@ -188,6 +218,8 @@ class GraphicField(QFrame):
                         zone.activated = False
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+
+        self.__mouse_is_pressed = False
         if self.__mode == 'select':
             self.__select_end = (event.pos().x(), event.pos().y())
             width = self.__select_end[0] - self.__select_start[0]
@@ -255,12 +287,14 @@ class GraphicField(QFrame):
 
 class GraphicObject(QLabel):
 
-    def __init__(self, gr_field: GraphicField, x: float = 0, y: float = 0):
+    def __init__(self, gr_field: GraphicField, x: float = 0, y: float = 0, centered: bool = False):
         super().__init__(gr_field)
         self.setText('')
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.gr_field = gr_field
         self.gr_field.objects.append(self)
+
+        self.centered = centered
 
         self.x = x
         self.y = y
@@ -273,12 +307,11 @@ class GraphicObject(QLabel):
         pass
 
     def reposition(self):
-        # print('norm', self.x, self.y)
         x, y = self.gr_field.norm_to_pixel_coord(self.x, self.y)
-        # print('pixel', x, y)
-        self.move(round(x - self.width() / 2), round(y - self.height() / 2))
-        # print('угол', round(x - self.width() / 2), round(y - self.height() / 2))
-        # print()
+        if self.centered:
+            self.move(round(x - self.width() / 2), round(y - self.height() / 2))
+        else:
+            self.move(round(x), round(y))
 
     def move_to(self, x, y):
         self.x = x
@@ -288,6 +321,78 @@ class GraphicObject(QLabel):
     def refresh(self):
         self.rescale()
         self.reposition()
+
+
+# class GraphicObject_FixSize(GraphicObject):
+#
+#     def __init__(self, gr_field: GraphicField,
+#                  x: float = 0,
+#                  y: float = 0,
+#                  width: float = 0,
+#                  height: float = 0,
+#                  centered: bool = False):
+#
+#         super().__init__(gr_field, x, y, centered)
+#
+#         self.width_norm = width
+#         self.height_norm = height
+#         self.refresh()
+#
+#     def rescale(self):
+#
+#         self.setFixedWidth(self.gr_field.norm_to_pixel_rel(self.width_norm))
+#         self.setFixedHeight(self.gr_field.norm_to_pixel_rel(self.height_norm))
+#         self.update()
+
+
+class BackgroundPicture(GraphicObject):
+
+    def __init__(self, gr_field: GraphicField, pixmap: Optional[QPixmap] = None, file_path: Optional[str] = None):
+
+        super().__init__(gr_field, 0, 0, False)
+        if pixmap is not None:
+            self.set_picture(pixmap)
+        elif file_path is not None:
+            self.set_picture_from_file(file_path)
+
+        self.rescale()
+
+    def set_picture(self, pixmap: QPixmap):
+
+        self.setPixmap(pixmap)
+        self.setScaledContents(True)
+
+    def set_picture_from_file(self, file_path: str):
+
+        pixmap = QPixmap(file_path)
+        self.set_picture(pixmap)
+
+    def rescale(self):
+
+        self.setFixedWidth(self.gr_field.norm_to_pixel_rel(self.gr_field.x_range))
+        self.setFixedHeight(self.gr_field.norm_to_pixel_rel(self.gr_field.y_range))
+        self.update()
+
+
+class FrontLayer(QLabel):
+
+    def __init__(self, gr_field: GraphicField):
+        super().__init__(gr_field)
+        self.gr_field = gr_field
+        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.move(0, 0)
+        self.show()
+
+    def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
+        super().paintEvent(a0)
+        self.raise_()
+
+        painter = QPainter()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        self.gr_field.paintFrontLayer(painter)
+        painter.end()
 
 
 class GraphicZone(QObject):
@@ -336,3 +441,191 @@ class GraphicZone(QObject):
                 return self.mask[y_index, x_index]
             except IndexError:
                 return False
+
+    def paint(self, painter: QPainter):
+        pass
+
+
+AXES_PARAMETERS: Dict[Tuple[int, int, int], dict] = {}
+ROUND_AXES_PARAMETERS: Dict[Tuple[int, int, int], dict] = {}
+AXES_DEFINER = np.array([-rect(1, -pi/6), rect(1, pi/6), rect(1, -pi/2)])
+
+
+class Axes(GraphicObject):
+
+    def __init__(self, gr_field: GraphicField,
+                 x: float,
+                 y: float,
+                 arrow_length: float,
+                 font_size_rel: Optional[float] = 0.15,
+                 font_size: Optional[int] = None,
+                 pen_width: int = 1,
+                 pen_color: QColor = Qt.black,
+                 pen_width_activated: int = 2,
+                 pen_color_activated: QColor = Qt.darkYellow,
+                 arrow_parameters: Optional[dict] = None):
+
+        super().__init__(gr_field, x, y, True)
+        if arrow_parameters is None:
+            self.arrow_parameters = {}
+
+        self.font_size_rel = font_size_rel
+        self.font_size = font_size
+        self.pen_width = pen_width
+        self.pen_color = pen_color
+        self.pen_width_activated = pen_width_activated
+        self.pen_color_activated = pen_color_activated
+        self.activated = False
+        self.rel_width = 3
+        self.clockwise = False  # False, wenn positive Richtung ist gegen den Uhrzeigersinn
+
+        self.arrow_length = arrow_length
+        self.rescale()
+
+        self.axes: List[Axis] = []
+
+    def rescale(self):
+        self.setFixedWidth(self.gr_field.norm_to_pixel_rel(self.rel_width * self.arrow_length))
+        self.setFixedHeight(self.gr_field.norm_to_pixel_rel(self.rel_width * self.arrow_length))
+        self.update()
+
+    def def_axes(self, declaration: Iterable[Tuple[str, Tuple[int, int, int], bool]]):
+
+        self.axes = []
+        for axis_def in declaration:
+            name, definition, add_rotation = axis_def
+            axis = Axis(self, name, definition)
+            self.axes.append(axis)
+            if add_rotation:
+                self.axes.append(RoundAxis(axis))
+
+    def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
+
+        super().paintEvent(a0)
+
+        painter = QPainter_ext()
+        painter.begin(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        painter.set_parameters(self.arrow_parameters)
+
+        pen = QPen()
+        font = painter.font()
+        if self.font_size is None:
+            font_size = round(self.font_size_rel*self.gr_field.norm_to_pixel_rel(self.arrow_length))
+        else:
+            font_size = self.font_size
+        font.setPointSize(font_size)
+
+
+        center = complex(self.width()/2, self.height()/2)
+
+        for axis in self.axes:
+            if axis.activated or self.activated:
+                pen.setColor(self.pen_color_activated)
+                pen.setWidth(self.pen_width_activated)
+                font.setBold(True)
+            else:
+                pen.setColor(self.pen_color)
+                pen.setWidth(self.pen_width)
+                font.setBold(False)
+            painter.setPen(pen)
+            painter.setFont(font)
+
+            axis.paint(painter, center)
+
+
+class Axis:
+
+    def __init__(self, axes_obj: Axes, name: str, definition: Tuple[int, int, int], parameters: Optional[dict] = None):
+
+        self.axes_obj = axes_obj
+        self.name = name
+        self.definition = definition
+        self.notation_shift = (0.7, 0.7)  # Verschiebung der Achsenbeschriftung
+        # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
+
+        self.activated = False
+
+        if parameters is None:
+            parameters = {}
+        else:
+            self.set_parameters(parameters)
+
+    def set_parameters(self, parameters: dict):
+
+        set_attributes(self, parameters)
+
+    def paint(self, painter: QPainter_ext, center: complex):
+
+        # die Pfeile zeichnen
+        arrow_length_p = self.axes_obj.gr_field.norm_to_pixel_rel(self.axes_obj.arrow_length)
+        arrow_direction = np.dot(self.definition, AXES_DEFINER)
+        arrow_from_center = arrow_length_p * arrow_direction
+        arrow_end = center + arrow_from_center
+
+        start = complex_to_tuple_rounded(center)
+        end = complex_to_tuple_rounded(arrow_end)
+        painter.drawArrow(start, end)
+
+        # beschriftung der Achse
+        font_size = painter.font().pointSize()
+        along, across = self.notation_shift
+        notation_shift = along * arrow_direction + across * arrow_direction * rect(1, -pi / 2)
+        notation_shift *= font_size
+
+        notation_center = arrow_end + notation_shift
+        notation_center = complex_to_tuple_rounded(notation_center)
+
+        painter.drawText_centered(notation_center, self.name)
+
+
+class RoundAxis(Axis):
+
+    def __init__(self, axis: Axis, name: Optional[str] = None, parameters: Optional[dict] = None):
+
+        if name is None:
+            name = 'R' + axis.name
+
+        self.axis = axis
+        self.rel_width = 0.3  # Breite der runden Pfeile relativ der Pfeillänge
+        self.axis_notation_shift = (0, 0.9)  # dieser Wert ersetzt notation_shift im dazugehörigen Axis Objekt
+        self.shift = 0.3   # Abstand zwischen dem Ende der Pfeile und der Mitte der runden Pfeile (Einh: Pfeillänge)
+        self.notation_shift = (1, 1)  # Abstand zwischen der runden Pfeile und deren Beschriftung
+        # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
+
+        super().__init__(axis.axes_obj, name, axis.definition, parameters)
+
+        if sum(self.definition) > 0:
+            self._invert = False
+        else:
+            self._invert = True
+        if self.axis.axes_obj.clockwise:
+            self._invert = not self._invert
+
+        self.axis.notation_shift = self.axis_notation_shift
+        self.axis.axes_obj.rel_width += 2*(self.rel_width + self.shift +
+                                           2*len(name)*max(self.notation_shift)*self.axis.axes_obj.font_size_rel)
+
+    def paint(self, painter: QPainter_ext, center: complex):
+
+        # die Pfeile zeichnen
+        arrow_length_p = self.axes_obj.gr_field.norm_to_pixel_rel(self.axes_obj.arrow_length)
+        arrow_direction = np.dot(self.definition, AXES_DEFINER)
+        from_coord_center_to_round_center = (1 + self.shift) * arrow_length_p * arrow_direction
+        round_center = center + from_coord_center_to_round_center
+
+        width = self.rel_width * arrow_length_p
+        painter.drawRoundArrow(complex_to_tuple_rounded(round_center), round(width), self._invert)
+
+        # beschriftung der Achse
+        font_size = painter.font().pointSize()
+        along, across = self.notation_shift
+        notation_shift = along * arrow_direction + across * arrow_direction * rect(1, -pi / 2)
+        notation_shift *= font_size
+        notation_shift *= (1 + width/(2*abs(notation_shift)))
+
+        notation_center = round_center + notation_shift
+        notation_center = complex_to_tuple_rounded(notation_center)
+
+        painter.drawText_centered(notation_center, self.name)

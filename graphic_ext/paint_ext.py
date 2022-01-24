@@ -1,17 +1,10 @@
 from cmath import pi, rect
 from typing import Tuple
 
-from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject, QRect, Qt
 from PyQt5.QtGui import QPainter, QPainterPath
 
-
-def complex_to_tuple_rounded(c_number: complex) -> (int, int):
-
-    return round(c_number.real), round(c_number.imag)
-
-
-def complex_to_tuple(c_number: complex) -> (float, float):
-    return c_number.real, c_number.imag
+from graphic_ext.helper_functions import set_attributes, complex_to_tuple_rounded
 
 
 def start_painter(parent: QObject):
@@ -146,16 +139,37 @@ class QPainter_ext(QPainter):
         self.round_arrow_start_angle: int = -150
         self.round_arrow_end_angle: int = 150
 
+    def set_parameters(self, parameters: dict):
+
+        set_attributes(self, parameters)
+
     def drawArrow(self, start: Tuple[int, int], end: Tuple[int, int]):
 
         draw_arrow(start, end, self, self.fix_arrow_head, self.arrow_head_fix_width, self.arrow_head_rel_width,
                    self.arrow_head_angle, self.filled_arrow_head)
 
-    def drawRoundArrow(self, center: Tuple[int, int], width: int):
+    def drawRoundArrow(self, center: Tuple[int, int], width: int, invert: bool = False):
 
-        draw_round_arrow(center, width, self, self.round_arrow_start_angle, self.round_arrow_end_angle,
+        if invert:
+            round_arrow_start_angle = self.round_arrow_end_angle
+            round_arrow_end_angle = self.round_arrow_start_angle
+        else:
+            round_arrow_start_angle = self.round_arrow_start_angle
+            round_arrow_end_angle = self.round_arrow_end_angle
+
+        draw_round_arrow(center, width, self, round_arrow_start_angle, round_arrow_end_angle,
                          self.fix_arrow_head, self.round_arrow_head_fix_width, self.round_arrow_head_rel_width,
                          self.round_arrow_head_angle, self.round_arrow_head_rotation, self.filled_arrow_head)
+
+    def drawText_centered(self, center_point: Tuple[int, int], text: str):
+
+        rect_height = 2 * self.font().pointSize()
+        rect_width = rect_height * len(text)
+        rect_position = complex(*center_point) - complex(rect_width, rect_height) / 2
+        rect_position = complex_to_tuple_rounded(rect_position)
+        text_rect = QRect(*rect_position, rect_width, rect_height)
+
+        self.drawText(text_rect, Qt.AlignCenter, text)
 
 
 
