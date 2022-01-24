@@ -101,27 +101,43 @@ class GraphicField(QFrame):
     def set_current_width_as_pixel_range(self):
         self.pixel_range0 = self.width()
 
-    def norm_to_pixel_rel(self, value: float) -> int:
+    def norm_to_pixel_rel(self, value: float) -> float:
         """Transformiert ein Wert in normierte Einheiten zu Pixel."""
-        return round(self.pixel_range() / (self.zoom_w + 2*self.margin) * value)
+
+        return self.pixel_range() / (self.zoom_w + 2*self.margin) * value
+
+    def norm_to_pixel_rel_int(self, value: float) -> int:
+        """Transformiert ein Wert in normierte Einheiten zu Pixel."""
+
+        return round(self.norm_to_pixel_rel(value))
 
     def pixel_to_norm_rel(self, value: float) -> float:
         """Transformiert ein Wert in Pixel zu normierte Einheiten."""
+
         return (self.zoom_w + 2*self.margin) / self.pixel_range() * value
 
     def norm_to_pixel_coord(self, x: float, y: float) -> (float, float):
         """Transformiert Koordinaten in normierte Einheiten zu Pixel."""
+
         x = self.norm_to_pixel_rel(x - self.zoom_x + self.margin)
         y = self.norm_to_pixel_rel(y - self.zoom_y + self.margin)
         return x, y
 
+    def norm_to_pixel_coord_int(self, x: float, y: float) -> (int, int):
+        """Transformiert Koordinaten in normierte Einheiten zu Pixel."""
+
+        x, y = self.norm_to_pixel_coord(x, y)
+        return round(x), round(y)
+
     def pixel_to_norm_coord(self, x: float, y: float) -> (float, float):
         """Transformiert Koordinaten in Pixel zu normierte Einheiten."""
+
         x = self.pixel_to_norm_rel(x) + self.zoom_x - self.margin
         y = self.pixel_to_norm_rel(y) + self.zoom_y - self.margin
         return x, y
 
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+
         if self.keep_ratio:
             if a0.size().width() <= a0.size().height()*self.x_range/self.y_range:
                 width = a0.size().width()
@@ -137,6 +153,7 @@ class GraphicField(QFrame):
         # print(a0.size())
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
+
         super().paintEvent(a0)
 
         qp = QPainter()
