@@ -1,8 +1,8 @@
 from cmath import pi, rect
 from typing import Tuple
 
-from PyQt5.QtCore import QObject, QRect, Qt
-from PyQt5.QtGui import QPainter, QPainterPath
+from PyQt6.QtCore import QObject, QRect, Qt
+from PyQt6.QtGui import QPainter, QPainterPath
 
 from graphic_ext.helper_functions import set_attributes, complex_to_tuple_rounded
 
@@ -11,7 +11,7 @@ def start_painter(parent: QObject):
 
     painter = QPainter_ext()
     painter.begin(parent)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     return painter
 
 
@@ -169,7 +169,7 @@ class QPainter_ext(QPainter):
         rect_position = complex_to_tuple_rounded(rect_position)
         text_rect = QRect(*rect_position, rect_width, rect_height)
 
-        self.drawText(text_rect, Qt.AlignCenter, text)
+        self.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, text)
 
 
 

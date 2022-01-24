@@ -3,16 +3,16 @@ from typing import List, Any, Callable, Optional, Dict, Tuple, Iterable
 
 import PIL
 import numpy as np
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal, QObject, QRect
-from PyQt5.QtGui import QPainter, QPen, QPixmap, QColor, QFont
-from PyQt5.QtWidgets import QFrame, QLabel
-from PyQt5.QtWidgets import QSizePolicy
+from PyQt6 import QtGui
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QRect
+from PyQt6.QtGui import QPainter, QPen, QPixmap, QColor, QFont
+from PyQt6.QtWidgets import QFrame, QLabel
+from PyQt6.QtWidgets import QSizePolicy
 from PIL import Image
 from nptyping import NDArray, Bool
 
-from .paint_ext import QPainter_ext
-from .helper_functions import set_attributes, complex_to_tuple_rounded
+from graphic_ext.paint_ext import QPainter_ext
+from graphic_ext.helper_functions import set_attributes, complex_to_tuple_rounded
 
 
 class GraphicField(QFrame):
@@ -158,30 +158,30 @@ class GraphicField(QFrame):
 
         qp = QPainter()
         qp.begin(self)
-        qp.setRenderHint(QPainter.Antialiasing)
+        qp.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         # Hintergrund malen
-        pen = QPen(Qt.gray, 1, Qt.SolidLine)
+        pen = QPen(Qt.GlobalColor.gray, 1, Qt.PenStyle.SolidLine)
         qp.setPen(pen)
-        qp.setBrush(Qt.gray)
+        qp.setBrush(Qt.GlobalColor.gray)
         qp.drawRect(0, 0, self.width(), self.height())
 
         # Sample malen
-        pen.setColor(Qt.white)
+        pen.setColor(Qt.GlobalColor.white)
         qp.setPen(pen)
-        qp.setBrush(Qt.white)
-        qp.drawRect(*self.norm_to_pixel_coord(-self.margin, -self.margin),
-                    self.norm_to_pixel_rel(self.x_range + 2*self.margin),
-                    self.norm_to_pixel_rel(self.x_range + 2*self.margin))
+        qp.setBrush(Qt.GlobalColor.white)
+        qp.drawRect(*self.norm_to_pixel_coord_int(-self.margin, -self.margin),
+                    self.norm_to_pixel_rel_int(self.x_range + 2*self.margin),
+                    self.norm_to_pixel_rel_int(self.x_range + 2*self.margin))
 
         qp.end()
 
     def paintFrontLayer(self, painter: QPainter):
 
         if self.__select:
-            pen = QPen(Qt.gray, 1, Qt.SolidLine)
+            pen = QPen(Qt.GlobalColor.gray, 1, Qt.PenStyle.SolidLine)
             painter.setPen(pen)
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             start = self.__select_start
             end = self.__select_end
             painter.drawRect(start[0], start[1], end[0] - start[0], end[1] - start[1])
@@ -197,7 +197,7 @@ class GraphicField(QFrame):
             self.__select_start = (x, y)
             self.__select_end = (x, y)
         elif self.__mode == 'grab':
-            self.setCursor(Qt.ClosedHandCursor)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
             self.__move_start = (x, y)
 
             self.__zoom_x0 = self.zoom_x
@@ -267,7 +267,7 @@ class GraphicField(QFrame):
             self.__select = False
             self.zoomed.emit()
         elif self.__mode == 'grab':
-            self.setCursor(Qt.OpenHandCursor)
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
 
@@ -307,7 +307,7 @@ class GraphicObject(QLabel):
     def __init__(self, gr_field: GraphicField, x: float = 0, y: float = 0, centered: bool = False):
         super().__init__(gr_field)
         self.setText('')
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.gr_field = gr_field
         self.gr_field.objects.append(self)
 
@@ -386,8 +386,8 @@ class BackgroundPicture(GraphicObject):
 
     def rescale(self):
 
-        self.setFixedWidth(self.gr_field.norm_to_pixel_rel(self.gr_field.x_range))
-        self.setFixedHeight(self.gr_field.norm_to_pixel_rel(self.gr_field.y_range))
+        self.setFixedWidth(self.gr_field.norm_to_pixel_rel_int(self.gr_field.x_range))
+        self.setFixedHeight(self.gr_field.norm_to_pixel_rel_int(self.gr_field.y_range))
         self.update()
 
 
@@ -396,7 +396,7 @@ class FrontLayer(QLabel):
     def __init__(self, gr_field: GraphicField):
         super().__init__(gr_field)
         self.gr_field = gr_field
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.move(0, 0)
         self.show()
 
@@ -406,7 +406,7 @@ class FrontLayer(QLabel):
 
         painter = QPainter()
         painter.begin(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         self.gr_field.paintFrontLayer(painter)
         painter.end()
@@ -477,9 +477,9 @@ class Axes(GraphicObject):
                  font_size_rel: Optional[float] = 0.15,
                  font_size: Optional[int] = None,
                  pen_width: int = 1,
-                 pen_color: QColor = Qt.black,
+                 pen_color: QColor = Qt.GlobalColor.black,
                  pen_width_activated: int = 2,
-                 pen_color_activated: QColor = Qt.darkYellow,
+                 pen_color_activated: QColor = Qt.GlobalColor.darkYellow,
                  arrow_parameters: Optional[dict] = None):
 
         super().__init__(gr_field, x, y, True)
@@ -502,8 +502,8 @@ class Axes(GraphicObject):
         self.axes: List[Axis] = []
 
     def rescale(self):
-        self.setFixedWidth(self.gr_field.norm_to_pixel_rel(self.rel_width * self.arrow_length))
-        self.setFixedHeight(self.gr_field.norm_to_pixel_rel(self.rel_width * self.arrow_length))
+        self.setFixedWidth(self.gr_field.norm_to_pixel_rel_int(self.rel_width * self.arrow_length))
+        self.setFixedHeight(self.gr_field.norm_to_pixel_rel_int(self.rel_width * self.arrow_length))
         self.update()
 
     def def_axes(self, declaration: Iterable[Tuple[str, Tuple[int, int, int], bool]]):
@@ -522,7 +522,7 @@ class Axes(GraphicObject):
 
         painter = QPainter_ext()
         painter.begin(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         painter.set_parameters(self.arrow_parameters)
 
