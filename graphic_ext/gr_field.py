@@ -50,7 +50,6 @@ class GraphicField(QFrame):
         self.__zoom_y0 = 0
 
         self.__mouse_is_pressed = False
-        self.setMouseTracking(True)
 
         self.zoomed.connect(self.update)
 
@@ -222,17 +221,6 @@ class GraphicField(QFrame):
             self.zoom_x = self.__zoom_x0 - self.pixel_to_norm_rel(dx)
             self.zoom_y = self.__zoom_y0 - self.pixel_to_norm_rel(dy)
             self.zoomed.emit()
-        else:
-            x, y = self.pixel_to_norm_coord(x, y)
-            for zone in self.zones:
-                if zone.coordinates_are_in_zone(x, y):
-                    if not zone.activated:
-                        zone.mouse_enter.emit()
-                        zone.activated = True
-                else:
-                    if zone.activated:
-                        zone.mouse_leave.emit()
-                        zone.activated = False
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
 
@@ -399,6 +387,21 @@ class FrontLayer(QLabel):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.move(0, 0)
         self.show()
+        self.setMouseTracking(True)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+
+        x, y = event.pos().x(), event.pos().y()
+        x, y = self.gr_field.pixel_to_norm_coord(x, y)
+        for zone in self.gr_field.zones:
+            if zone.coordinates_are_in_zone(x, y):
+                if not zone.activated:
+                    zone.mouse_enter.emit()
+                    zone.activated = True
+            else:
+                if zone.activated:
+                    zone.mouse_leave.emit()
+                    zone.activated = False
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         super().paintEvent(a0)
@@ -443,7 +446,7 @@ class GraphicZone(QObject):
 
         image_pil = PIL.Image.open(mask_file).convert('L')
         image = np.array(image_pil)
-        self.mask = image > 123
+        self.mask = image > 10
         self.check_func = None
 
     def coordinates_are_in_zone(self, x: float, y: float) -> bool:
