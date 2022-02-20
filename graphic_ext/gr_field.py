@@ -467,7 +467,6 @@ class GraphicZone(QObject):
 
 
 AXES_PARAMETERS: Dict[Tuple[int, int, int], dict] = {}
-ROUND_AXES_PARAMETERS: Dict[Tuple[int, int, int], dict] = {}
 AXES_DEFINER = np.array([-rect(1, -pi/6), rect(1, pi/6), rect(1, -pi/2)])
 
 
@@ -482,12 +481,19 @@ class Axes(GraphicObject):
                  pen_width: int = 1,
                  pen_color: QColor = Qt.GlobalColor.black,
                  pen_width_activated: int = 2,
-                 pen_color_activated: QColor = Qt.GlobalColor.darkYellow,
-                 arrow_parameters: Optional[dict] = None):
+                 pen_color_activated: QColor = Qt.GlobalColor.red,
+                 arrow_parameters: Optional[dict] = None,
+                 round_arrow_parameters: Optional[dict] = None):
 
         super().__init__(gr_field, x, y, True)
         if arrow_parameters is None:
             self.arrow_parameters = {}
+        else:
+            self.arrow_parameters = arrow_parameters
+        if round_arrow_parameters is None:
+            self.round_arrow_parameters = {}
+        else:
+            self.round_arrow_parameters = round_arrow_parameters
 
         self.font_size_rel = font_size_rel
         self.font_size = font_size
@@ -504,6 +510,10 @@ class Axes(GraphicObject):
 
         self.axes: List[Axis] = []
 
+    def set_activated(self, activated: bool):
+        self.activated = activated
+        self.update()
+
     def rescale(self):
         self.setFixedWidth(self.gr_field.norm_to_pixel_rel_int(self.rel_width * self.arrow_length))
         self.setFixedHeight(self.gr_field.norm_to_pixel_rel_int(self.rel_width * self.arrow_length))
@@ -517,7 +527,7 @@ class Axes(GraphicObject):
             axis = Axis(self, name, definition)
             self.axes.append(axis)
             if add_rotation:
-                self.axes.append(RoundAxis(axis))
+                self.axes.append(RoundAxis(axis, parameters=self.round_arrow_parameters))
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
 
@@ -536,7 +546,6 @@ class Axes(GraphicObject):
         else:
             font_size = self.font_size
         font.setPointSize(font_size)
-
 
         center = complex(self.width()/2, self.height()/2)
 
@@ -557,13 +566,14 @@ class Axes(GraphicObject):
 
 class Axis:
 
+    notation_shift: Tuple[float, float] = (0.7, 0.7)  # Verschiebung der Achsenbeschriftung
+    # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
+
     def __init__(self, axes_obj: Axes, name: str, definition: Tuple[int, int, int], parameters: Optional[dict] = None):
 
         self.axes_obj = axes_obj
         self.name = name
         self.definition = definition
-        self.notation_shift = (0.7, 0.7)  # Verschiebung der Achsenbeschriftung
-        # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
 
         self.activated = False
 
@@ -602,17 +612,18 @@ class Axis:
 
 class RoundAxis(Axis):
 
+    rel_width: float = 0.3  # Breite der runden Pfeile relativ der Pfeillänge
+    axis_notation_shift: Tuple[float, float] = (0, 0.9)  # dieser Wert ersetzt notation_shift im dazugehörigen Axis Objekt
+    shift: float = 0.3  # Abstand zwischen dem Ende der Pfeile und der Mitte der runden Pfeile (Einh: Pfeillänge)
+    notation_shift: Tuple[float, float] = (1, 1)  # Abstand zwischen der runden Pfeile und deren Beschriftung
+    # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
+
     def __init__(self, axis: Axis, name: Optional[str] = None, parameters: Optional[dict] = None):
 
         if name is None:
             name = 'R' + axis.name
 
         self.axis = axis
-        self.rel_width = 0.3  # Breite der runden Pfeile relativ der Pfeillänge
-        self.axis_notation_shift = (0, 0.9)  # dieser Wert ersetzt notation_shift im dazugehörigen Axis Objekt
-        self.shift = 0.3   # Abstand zwischen dem Ende der Pfeile und der Mitte der runden Pfeile (Einh: Pfeillänge)
-        self.notation_shift = (1, 1)  # Abstand zwischen der runden Pfeile und deren Beschriftung
-        # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
 
         super().__init__(axis.axes_obj, name, axis.definition, parameters)
 
@@ -648,4 +659,9 @@ class RoundAxis(Axis):
         notation_center = round_center + notation_shift
         notation_center = complex_to_tuple_rounded(notation_center)
 
+        font0 = painter.font()
+        font = painter.font()
+        font.setPointSize(round(0.9 * font_size))
+        painter.setFont(font)
         painter.drawText_centered(notation_center, self.name)
+        painter.setFont(font0)
