@@ -614,8 +614,8 @@ class RoundAxis(Axis):
 
     rel_width: float = 0.3  # Breite der runden Pfeile relativ der Pfeillänge
     axis_notation_shift: Tuple[float, float] = (0, 0.9)  # dieser Wert ersetzt notation_shift im dazugehörigen Axis Objekt
-    shift: float = 0.3  # Abstand zwischen dem Ende der Pfeile und der Mitte der runden Pfeile (Einh: Pfeillänge)
-    notation_shift: Tuple[float, float] = (1, 1)  # Abstand zwischen der runden Pfeile und deren Beschriftung
+    shift: float = 0.15  # Abstand zwischen dem Ende der Pfeile und dem Körper der runden Pfeile (Einh: Pfeillänge)
+    notation_shift: Tuple[float, float] = (0.72, 0.72)  # Abstand zwischen der runden Pfeile und deren Beschriftung
     # in relative Einheiten von jetzigen font-pt-size ([Entlang der Pfeile], [quer der Pfeile nach rechts])
 
     def __init__(self, axis: Axis, name: Optional[str] = None, parameters: Optional[dict] = None):
@@ -643,7 +643,7 @@ class RoundAxis(Axis):
         # die Pfeile zeichnen
         arrow_length_p = self.axes_obj.gr_field.norm_to_pixel_rel(self.axes_obj.arrow_length)
         arrow_direction = np.dot(self.definition, AXES_DEFINER)
-        from_coord_center_to_round_center = (1 + self.shift) * arrow_length_p * arrow_direction
+        from_coord_center_to_round_center = (1 + self.shift + self.rel_width/2) * arrow_length_p * arrow_direction
         round_center = center + from_coord_center_to_round_center
 
         width = self.rel_width * arrow_length_p
