@@ -483,17 +483,22 @@ class Axes(GraphicObject):
                  pen_width_activated: int = 2,
                  pen_color_activated: QColor = Qt.GlobalColor.red,
                  arrow_parameters: Optional[dict] = None,
-                 round_arrow_parameters: Optional[dict] = None):
+                 axis_parameters: Optional[dict] = None,
+                 round_axis_parameters: Optional[dict] = None,):
 
         super().__init__(gr_field, x, y, True)
         if arrow_parameters is None:
             self.arrow_parameters = {}
         else:
             self.arrow_parameters = arrow_parameters
-        if round_arrow_parameters is None:
-            self.round_arrow_parameters = {}
+        if axis_parameters is None:
+            self.axis_parameters = {}
         else:
-            self.round_arrow_parameters = round_arrow_parameters
+            self.axis_parameters = axis_parameters
+        if round_axis_parameters is None:
+            self.round_axis_parameters = {}
+        else:
+            self.round_axis_parameters = round_axis_parameters
 
         self.font_size_rel = font_size_rel
         self.font_size = font_size
@@ -524,10 +529,10 @@ class Axes(GraphicObject):
         self.axes = []
         for axis_def in declaration:
             name, definition, add_rotation = axis_def
-            axis = Axis(self, name, definition)
+            axis = Axis(self, name, definition, self.axis_parameters)
             self.axes.append(axis)
             if add_rotation:
-                self.axes.append(RoundAxis(axis, parameters=self.round_arrow_parameters))
+                self.axes.append(RoundAxis(axis, parameters=self.round_axis_parameters))
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
 
