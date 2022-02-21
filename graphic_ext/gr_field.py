@@ -175,7 +175,7 @@ class GraphicField(QFrame):
 
         qp.end()
 
-    def paintFrontLayer(self, painter: QPainter):
+    def paintFrontLayer(self, painter: QPainter_ext):
 
         if self.__select:
             pen = QPen(Qt.GlobalColor.gray, 1, Qt.PenStyle.SolidLine)
@@ -407,7 +407,7 @@ class FrontLayer(QLabel):
         super().paintEvent(a0)
         self.raise_()
 
-        painter = QPainter()
+        painter = QPainter_ext()
         painter.begin(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
@@ -462,7 +462,7 @@ class GraphicZone(QObject):
             except IndexError:
                 return False
 
-    def paint(self, painter: QPainter):
+    def paint(self, painter: QPainter_ext):
         pass
 
 
