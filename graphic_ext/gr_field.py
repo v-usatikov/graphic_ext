@@ -514,7 +514,7 @@ class Axes(GraphicObject):
         self.arrow_length = arrow_length
         self.rescale()
 
-        self.axes: List[Axis] = []
+        self.axes: Dict[str, Axis] = {}
 
     def set_activated(self, activated: bool):
         self.activated = activated
@@ -555,7 +555,7 @@ class Axes(GraphicObject):
 
         center = complex(self.width()/2, self.height()/2)
 
-        for axis in self.axes:
+        for axis in self.axes.values():
             if axis.activated or self.activated:
                 pen.setColor(self.pen_color_activated)
                 pen.setWidth(self.pen_width_activated)
