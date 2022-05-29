@@ -527,13 +527,13 @@ class Axes(GraphicObject):
 
     def def_axes(self, declaration: Iterable[Tuple[str, Tuple[int, int, int], bool]]):
 
-        self.axes = []
+        self.axes = {}
         for axis_def in declaration:
             name, definition, add_rotation = axis_def
             axis = Axis(self, name, definition, self.axis_parameters)
-            self.axes.append(axis)
+            self.axes[name] = axis
             if add_rotation:
-                self.axes.append(RoundAxis(axis, parameters=self.round_axis_parameters))
+                self.axes['R' + name]= RoundAxis(axis, parameters=self.round_axis_parameters)
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
 
