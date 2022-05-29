@@ -21,6 +21,7 @@ class GraphicField(QFrame):
     def __init__(self, parent=None, x_range: float = 1000, y_range: float = 1000, margin: float = 0,
                  keep_ratio: bool = True, scale: bool = True):
         super().__init__(parent)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.x_range = x_range
         self.y_range = y_range
