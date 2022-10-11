@@ -57,6 +57,10 @@ class GraphicField(QFrame):
         self.background = BackgroundPicture(self)
         self.front_layer = FrontLayer(self)
 
+    def mouse_is_pressed(self):
+
+        return self.__mouse_is_pressed
+
     def set_background(self, pixmap: QPixmap, use_picture_coordinates: bool = True):
 
         if use_picture_coordinates:
