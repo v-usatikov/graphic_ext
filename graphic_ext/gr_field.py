@@ -407,6 +407,7 @@ class FrontLayer(QLabel):
                 if zone.activated:
                     zone.mouse_leave.emit()
                     zone.activated = False
+        self.gr_field.mouseMoveEvent(event)
 
     def paintEvent(self, a0: QtGui.QPaintEvent) -> None:
         super().paintEvent(a0)
