@@ -87,11 +87,11 @@ class GraphicField(QFrame):
             raise ValueError(f'Unbekannter Mode: "{mode}". Mögliche Variante: {self.__modes}')
         self.__mode = mode
         if mode == 'normal':
-            self.setCursor(Qt.ArrowCursor)
+            self.setCursor(Qt.CursorShape.ArrowCursor)
         elif mode == 'grab':
-            self.setCursor(Qt.OpenHandCursor)
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
         elif mode == 'select':
-            self.setCursor(Qt.CrossCursor)
+            self.setCursor(Qt.CursorShape.CrossCursor)
 
     def mode(self) -> str:
         return self.__mode
