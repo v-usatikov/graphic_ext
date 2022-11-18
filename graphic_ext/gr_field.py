@@ -36,15 +36,15 @@ class GraphicField(QFrame):
         # Mode einstellen ('navig', 'move' oder 'select')
         self.keep_ratio = keep_ratio
         self.scale = scale
-        self.__modes = ['normal', 'grab', 'select']
+        self.modes = ['normal', 'grab', 'select']
         self.__mode = 'normal'
 
         self.objects: List[GraphicObject] = []
         self.zones: List[GraphicZone] = []
 
         self.__select = False
-        self.__select_start = (0, 0)
-        self.__select_end = (0, 0)
+        self.select_start = (0, 0)
+        self.select_end = (0, 0)
 
         self.__move_start = (0, 0)
         self.__zoom_x0 = 0
@@ -83,8 +83,8 @@ class GraphicField(QFrame):
 
     def set_mode(self, mode: str):
 
-        if mode not in self.__modes:
-            raise ValueError(f'Unbekannter Mode: "{mode}". Mögliche Variante: {self.__modes}')
+        if mode not in self.modes:
+            raise ValueError(f'Unbekannter Mode: "{mode}". Mögliche Variante: {self.modes}')
         self.__mode = mode
         if mode == 'normal':
             self.setCursor(Qt.CursorShape.ArrowCursor)
@@ -186,8 +186,8 @@ class GraphicField(QFrame):
             pen = QPen(Qt.GlobalColor.gray, 1, Qt.PenStyle.SolidLine)
             painter.setPen(pen)
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            start = self.__select_start
-            end = self.__select_end
+            start = self.select_start
+            end = self.select_end
             painter.drawRect(start[0], start[1], end[0] - start[0], end[1] - start[1])
 
         for zone in self.zones:
@@ -196,10 +196,10 @@ class GraphicField(QFrame):
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
 
         x, y = event.pos().x(), event.pos().y()
-        if self.__mode == 'select':
+        if 'select' in self.__mode:
             self.__select = True
-            self.__select_start = (x, y)
-            self.__select_end = (x, y)
+            self.select_start = (x, y)
+            self.select_end = (x, y)
         elif self.__mode == 'grab':
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             self.__move_start = (x, y)
@@ -216,8 +216,8 @@ class GraphicField(QFrame):
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
 
         x, y = event.pos().x(), event.pos().y()
-        if self.__mode == 'select' and self.__mouse_is_pressed:
-            self.__select_end = (x, y)
+        if 'select' in self.__mode and self.__mouse_is_pressed:
+            self.select_end = (x, y)
             self.update()
         elif self.__mode == 'grab' and self.__mouse_is_pressed:
             end = (x, y)
@@ -230,12 +230,14 @@ class GraphicField(QFrame):
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
 
         self.__mouse_is_pressed = False
-        if self.__mode == 'select':
-            self.__select_end = (event.pos().x(), event.pos().y())
-            width = self.__select_end[0] - self.__select_start[0]
-            height = self.__select_end[1] - self.__select_start[1]
+        if 'select' in self.__mode:
+            self.select_end = (event.pos().x(), event.pos().y())
 
-            self.zoom_x, self.zoom_y = self.pixel_to_norm_coord(self.__select_start[0], self.__select_start[1])
+        if self.__mode == 'select':
+            width = self.select_end[0] - self.select_start[0]
+            height = self.select_end[1] - self.select_start[1]
+
+            self.zoom_x, self.zoom_y = self.pixel_to_norm_coord(self.select_start[0], self.select_start[1])
 
             self.zoom_x += self.margin
             self.zoom_y += self.margin
