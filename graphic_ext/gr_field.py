@@ -232,6 +232,8 @@ class GraphicField(QFrame):
         self.__mouse_is_pressed = False
         if 'select' in self.__mode:
             self.select_end = (event.pos().x(), event.pos().y())
+            self.__select = False
+            self.update()
 
         if self.__mode == 'select':
             width = self.select_end[0] - self.select_start[0]
@@ -259,7 +261,6 @@ class GraphicField(QFrame):
             else:
                 self.zoom_w -= 2*self.margin
 
-            self.__select = False
             self.zoomed.emit()
         elif self.__mode == 'grab':
             self.setCursor(Qt.CursorShape.OpenHandCursor)
