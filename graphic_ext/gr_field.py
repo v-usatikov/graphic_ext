@@ -61,12 +61,13 @@ class GraphicField(QFrame):
 
         return self.__mouse_is_pressed
 
-    def set_background(self, pixmap: QPixmap, use_picture_coordinates: bool = True):
+    def set_background(self, pixmap: QPixmap, use_picture_coordinates: bool = True, keep_zoom: bool = False):
 
         if use_picture_coordinates:
             self.x_range = pixmap.width()
             self.y_range = pixmap.height()
-            self.zoom_reset()
+            if not keep_zoom:
+                self.zoom_reset()
         self.background.set_picture(pixmap)
 
     def set_background_from_file(self, file_path: str, use_picture_coordinates: bool = True):
