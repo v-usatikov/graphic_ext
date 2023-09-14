@@ -8,12 +8,12 @@ authors = ["Vladimir Usatikov <vladimir@usatikov.com>"]
 python = "^3.10"
 #typing = "^3.7.4"
 
-requests = "^2"
-pyqtgraph = "^0"
-pyopengl = "^3"
-Pillow = "^8"
-nptyping = "^1"
-PyQt6 = "^6"
+requests = "*"
+pyqtgraph = "*"
+pyopengl = "*"
+Pillow = "*"
+nptyping = "*"
+PyQt6 = "*"
 [tool.poetry.dev-dependencies]
 pytest = "*"
 
