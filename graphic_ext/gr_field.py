@@ -9,7 +9,7 @@ from PyQt6.QtGui import QPainter, QPen, QPixmap, QColor, QFont
 from PyQt6.QtWidgets import QFrame, QLabel
 from PyQt6.QtWidgets import QSizePolicy
 from PIL import Image
-from nptyping import NDArray, Bool
+from nptyping import NDArray, Bool, Shape
 
 from graphic_ext.paint_ext import QPainter_ext
 from graphic_ext.helper_functions import set_attributes, complex_to_tuple_rounded
@@ -427,7 +427,7 @@ class FrontLayer(QLabel):
 
 class GraphicZone(QObject):
 
-    mask: NDArray[(Any, 2), Bool]
+    mask: NDArray[Shape['Any, Any'], Bool]
     check_func: Optional[Callable[[float, float], bool]] = None
 
     activated: bool = False
@@ -437,7 +437,7 @@ class GraphicZone(QObject):
     mouse_leave = pyqtSignal()
 
     def __init__(self, gr_field: GraphicField, check_func: Callable[[float, float], bool] = None,
-                 mask: NDArray[(Any, 2), Bool] = None,
+                 mask: NDArray[Shape['Any, Any'], Bool] = None,
                  mask_file: str = None):
 
         super().__init__()
